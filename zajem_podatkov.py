@@ -7,12 +7,27 @@ frontpage_url = "https://dogtime.com/dog-breeds/profiles"
 # mapa, v katero bom shranila podatke
 dog_directory = "kuzki"
 # ime datoteke v katero bom shranila glavno stran
-frontpage_filename = "index_kuzki.html"
+frontpage_filename = "index_kuzki.html" #spremenit
 # ime csv datoteke, v katero bomo shranili podatke
 csv_filename = "kuzki.csv"
 
 #ce bo csv datotek prevec pol jih ne vkljucis
 
+
+re_pick_links_block = re.compile(
+    r'<a class="list-item-title" href=(.*?)>',
+    flags=re.DOTALL
+)
+
+re_pick_link = re.compile(
+    r'"https://dogtime.com/dog-breeds(.*?)"',
+    flags=re.DOTALL
+)
+
+re_name_from_link = re.compile(
+    r'/(?P<name>.*?)',
+    flags=re.DOTALL
+)
 
 def download_url_to_string(url):
     """Funkcija kot argument sprejme niz in poskusi vrniti vsebino te spletne
@@ -50,6 +65,24 @@ def save_frontpage(directory, filename):
     save_string_to_file(text, directory, filename)
     return None
 
+# nova fuja
+def save_pages_to_file(directory, filename):
+    with open(os.path.join(directory, filename), "r", encoding='utf-8') as dat:
+        vsebina = dat.read()
+    cel_block = re_pick_links_block.findall(vsebina)[0]
+    sez_linkov = re_pick_link.findall(cel_block)
+    print(sez_linkov)
+    #/afador je link
+    for link in sez_linkov:
+        stran = requests.get('https://dogtime.com/dog-breeds' + link)
+        names_dict = re_name_from_link.search(link)
+        print(names_dict)
+        ime_mape_posamezno = '{}.html'.format(names_dict['name'])
+        full_filepath = os.path.join(directory, ime_mape_posamezno)
+        with open(full_filepath, 'w', encoding='utf-8') as posamezna_dat:
+            posamezna_dat.write(stran.text)
+    return None
+
 ####################################################
 # funkcije za obdelanje podatkov
 ####################################################
@@ -60,7 +93,10 @@ def read_file_to_string(directory, filename):
     with open(path, 'r', encoding='utf-8') as file_in:
         return file_in.read()
 
-# primer = "<div class="list-item"><a class="list-item-img" href="https://dogtime.com/dog-breeds/afador"><img class="list-item-breed-img" src="https://www.dogtime.com/assets/uploads/2019/08/afador-mixed-dog-breed-pictures-cover-650x368.jpg" alt="Afador" ></a><a class="list-item-title" href="https://dogtime.com/dog-breeds/afador">Afador</a></div>"
+# primer = "<div class="list-item">
+# <a class="list-item-img" href="https://dogtime.com/dog-breeds/afador">
+# <img class="list-item-breed-img" src="https://www.dogtime.com/assets/uploads/2019/08/afador-mixed-dog-breed-pictures-cover-650x368.jpg" alt="Afador" ></a>
+# <a class="list-item-title" href="https://dogtime.com/dog-breeds/afador">Afador</a></div>"
 
 def page_to_ads(page_content):
     """Funkcija poišče posamezne oglase, ki se nahajajo v spletni strani in
@@ -135,15 +171,16 @@ def main(redownload=True, reparse=True):
     # v lokalno datoteko shranimo glavno stran
     save_frontpage(dog_directory, frontpage_filename)
 
+    save_pages_to_file(dog_directory,frontpage_filename)
     # iz lokalne html datoteke preberemo podatke
-    ads = page_to_ads(read_file_to_string(dog_directory, frontpage_filename))
+#    ads = page_to_ads(read_file_to_string(dog_directory, frontpage_filename))
 
     # Podatke preberemo v lepšo obliko (seznam slovarjev)
-    ads_nice = [get_dict_from_ad_block(ad) for ad in ads]
-    print(ads_from_file(frontpage_filename, dog_directory))
+#   ads_nice = [get_dict_from_ad_block(ad) for ad in ads]
+#    print(ads_from_file(frontpage_filename, dog_directory))
 
     # podatke shranimo v csv datoteko
-    write_dog_ads_to_csv(ads_nice, dog_directory, csv_filename)
+#   write_dog_ads_to_csv(ads_nice, dog_directory, csv_filename)
 
 if __name__ == "__main__":
     main()
