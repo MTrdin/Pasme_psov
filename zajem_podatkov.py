@@ -2,6 +2,11 @@ import csv
 import os
 import requests
 import re
+import sys
+import urllib
+
+if os.path.isfile('dog_save') == False:
+    os.makedirs('dog_save', exist_ok=True)
 
 frontpage_url = "https://dogtime.com/dog-breeds/profiles"
 # mapa, v katero bom shranila podatke
@@ -20,7 +25,7 @@ re_pick_links_block = re.compile(
 )
 
 re_pick_link = re.compile(
-    r'<a class="list-item-title" href="https://dogtime.com/dog-breeds(.*?)"',
+    r'<a class="list-item-title" href="https://dogtime.com/dog-breeds/(.*?)"',
     flags=re.DOTALL
 )
 
@@ -78,12 +83,12 @@ def save_pages_to_file(directory, filename):
     #cel_block = re_pick_links_block.findall(vsebina)[0]
     sez_linkov = re_pick_link.findall(vsebina)
     print(sez_linkov)
-    #/'afador' je link
+    #'afador' je link
     for link in sez_linkov:
-        stran = requests.get('https://dogtime.com/dog-breeds' + link)
-        names_dict = re_name_from_link.search(link)
-        print(names_dict)
-        ime_mape_posamezno = '{}.html'.format(names_dict['name'])
+        stran = requests.get('https://dogtime.com/dog-breeds/' + link)
+        #names_dict = re_name_from_link.search(link)
+        #print(names_dict)
+        ime_mape_posamezno = '{}.html'.format(link)
         full_filepath = os.path.join(directory, ime_mape_posamezno)
         with open(full_filepath, 'w', encoding='utf-8') as posamezna_dat:
             posamezna_dat.write(stran.text)
@@ -99,28 +104,32 @@ vzorec_profila = re.compile(
     r'Health And Grooming Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<health_and_needs>\w)">'
     r'Trainability</h3><div class="characteristic-star-block"><div class="star star-(?P<trainability>\w)">'
     r'Physical Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<physical_needs>\w)">'
-    r'<div class="vital-stat-title vital-stat-group">Dog Breed Group:</div>(?P<breed_group>.*?)</div>'
+    r'<div class="vital-stat-title vital-stat-group">Dog Breed Group:</div>(?P<breed_group>.+?)</div>'
     r'<div class="vital-stat-title vital-stat-height">Height:</div>(?P<height>.*?)</div>'
     r'<div class="vital-stat-title vital-stat-weight">Weight:</div>(?P<weight>.*?)</div>'
-    r'<div class="vital-stat-title vital-stat-lifespan">Life Span:</div>(?P<life_span>.*?)</div>'
+    r'<div class="vital-stat-title vital-stat-lifespan">Life Span:</div>(?P<life_span>.*?)</div>',
     flags=re.DOTALL
 )
 
 # dodana
 def read_information(directory):
+    """Vrne sez vseh slovarjev za posameznega kuzka"""
     podatki = []
     for filename in os.listdir(directory):
-        if filename != 'index_kuzki.html':
+        if filename != 'index_kuzki.html' and filename != '.html':#.html bi najbrs mogla zbrisat
             full_path = os.path.join(directory, filename)
             with open(full_path, 'r', encoding='utf-8') as dat:
                 vsebina = dat.read()
-                podatki.append(get_information(vsebina)) #napisi to fujo
+                podatki.append(get_information(vsebina))
         else:
             continue
     return podatki
 
 def get_information(text):
-    kuzi = vzorec_profila.search(text).groupdict()
+    matching = re.search(vzorec_profila, text)
+    #zakaj je matching tipa none
+    print(matching)
+    kuzi = matching.groupdict()
     kuzi['adaptability'] = int(kuzi['adaptability'])
     kuzi['friendliness'] = int(kuzi['friendliness'])
     kuzi['health_and_needs'] = int(kuzi['health_and_needs'])
@@ -137,8 +146,6 @@ def get_information(text):
         visina_v_p = int(visina_sez[0])
         kuzi['height_od'] = inches_to_cm(visina_v_p)
         kuzi['height_do'] = inches_to_cm(visina_v_p)
-    else:
-        continue
     
     teza_sez = kuzi['weight'].split()
     if len(teza_sez) == 4:
@@ -150,9 +157,7 @@ def get_information(text):
         visina_v_p = int(teza_sez[0])
         kuzi['weight_od'] = pounds_to_kg(teza_v_p)
         kuzi['weight_do'] = pounds_to_kg(teza_v_p)
-    else:
-        continue
-
+    
     zivljenje = kuzi['life_span'].split()
     if len(zivljenje) == 4:
         ziv_od = int(zivljenje[0])
@@ -164,9 +169,6 @@ def get_information(text):
         ziv = int(zivljenje[0])
         kuzi['life_od'] = ziv
         kuzi['life_do'] = ziv
-    
-    else:
-        continue
     
     return kuzi
 
@@ -181,16 +183,12 @@ def pounds_to_kg(teza):
     
 ################# od tuki naprej bo treba spremenit
 #ta funkcija bo mogla bit drugacna
+#verjetno sploh ne bo potrebna
 def read_file_to_string(directory, filename):
     """Funkcija vrne celotno vsebino datoteke "directory"/"filename" kot niz"""
     path = os.path.join(directory, filename)
     with open(path, 'r', encoding='utf-8') as file_in:
         return file_in.read()
-
-# primer = "<div class="list-item">
-# <a class="list-item-img" href="https://dogtime.com/dog-breeds/afador">
-# <img class="list-item-breed-img" src="https://www.dogtime.com/assets/uploads/2019/08/afador-mixed-dog-breed-pictures-cover-650x368.jpg" alt="Afador" ></a>
-# <a class="list-item-title" href="https://dogtime.com/dog-breeds/afador">Afador</a></div>"
 
 def page_to_ads(page_content):
     """Funkcija poišče posamezne oglase, ki se nahajajo v spletni strani in
@@ -263,9 +261,13 @@ def main(redownload=True, reparse=True):
     3. Podatke shrani v csv datoteko
     """
     # v lokalno datoteko shranimo glavno stran
-    save_frontpage(dog_directory, frontpage_filename)
+#    save_frontpage(dog_directory, frontpage_filename)
 
-    save_pages_to_file(dog_directory, frontpage_filename)
+#    save_pages_to_file(dog_directory, frontpage_filename)
+
+    sez_slovarjev = read_information(dog_directory)
+    print(sez_slovarjev)
+
     # iz lokalne html datoteke preberemo podatke
 #    ads = page_to_ads(read_file_to_string(dog_directory, frontpage_filename))
 
