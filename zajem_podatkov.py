@@ -5,7 +5,7 @@ import re
 
 frontpage_url = "https://dogtime.com/dog-breeds/profiles"
 # mapa, v katero bom shranila podatke
-dog_directory = "kuzki"
+dog_directory = os.path.join(sys.path[0], 'dog_save')
 # ime datoteke v katero bom shranila glavno stran
 frontpage_filename = "index_kuzki.html" #spremenit
 # ime csv datoteke, v katero bomo shranili podatke
@@ -13,14 +13,14 @@ csv_filename = "kuzki.csv"
 
 #ce bo csv datotek prevec pol jih ne vkljucis
 
-
+#tega zdej ne rabm
 re_pick_links_block = re.compile(
     r'<a class="list-item-title" href=(.*?)>',
     flags=re.DOTALL
 )
 
 re_pick_link = re.compile(
-    r'"https://dogtime.com/dog-breeds(.*?)"',
+    r'<a class="list-item-title" href="https://dogtime.com/dog-breeds(.*?)"',
     flags=re.DOTALL
 )
 
@@ -28,6 +28,12 @@ re_name_from_link = re.compile(
     r'/(?P<name>.*?)',
     flags=re.DOTALL
 )
+
+# primer = "<div class="list-item">
+# <a class="list-item-img" href="https://dogtime.com/dog-breeds/afador">
+# <img class="list-item-breed-img" src="https://www.dogtime.com/assets/uploads/2019/08/afador-mixed-dog-breed-pictures-cover-650x368.jpg" alt="Afador" ></a>
+# <a class="list-item-title" href="https://dogtime.com/dog-breeds/afador">Afador</a></div>"
+
 
 def download_url_to_string(url):
     """Funkcija kot argument sprejme niz in poskusi vrniti vsebino te spletne
@@ -69,10 +75,10 @@ def save_frontpage(directory, filename):
 def save_pages_to_file(directory, filename):
     with open(os.path.join(directory, filename), "r", encoding='utf-8') as dat:
         vsebina = dat.read()
-    cel_block = re_pick_links_block.findall(vsebina)[0]
-    sez_linkov = re_pick_link.findall(cel_block)
+    #cel_block = re_pick_links_block.findall(vsebina)[0]
+    sez_linkov = re_pick_link.findall(vsebina)
     print(sez_linkov)
-    #/afador je link
+    #/'afador' je link
     for link in sez_linkov:
         stran = requests.get('https://dogtime.com/dog-breeds' + link)
         names_dict = re_name_from_link.search(link)
@@ -87,6 +93,94 @@ def save_pages_to_file(directory, filename):
 # funkcije za obdelanje podatkov
 ####################################################
 
+vzorec_profila = re.compile(
+    r'Adaptability</h3><div class="characteristic-star-block"><div class="star star-(?P<adaptability>\w)">'
+    r'All Around Friendliness</h3><div class="characteristic-star-block"><div class="star star-(?P<friendliness>\w)">'
+    r'Health And Grooming Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<health_and_needs>\w)">'
+    r'Trainability</h3><div class="characteristic-star-block"><div class="star star-(?P<trainability>\w)">'
+    r'Physical Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<physical_needs>\w)">'
+    r'<div class="vital-stat-title vital-stat-group">Dog Breed Group:</div>(?P<breed_group>.*?)</div>'
+    r'<div class="vital-stat-title vital-stat-height">Height:</div>(?P<height>.*?)</div>'
+    r'<div class="vital-stat-title vital-stat-weight">Weight:</div>(?P<weight>.*?)</div>'
+    r'<div class="vital-stat-title vital-stat-lifespan">Life Span:</div>(?P<life_span>.*?)</div>'
+    flags=re.DOTALL
+)
+
+# dodana
+def read_information(directory):
+    podatki = []
+    for filename in os.listdir(directory):
+        if filename != 'index_kuzki.html':
+            full_path = os.path.join(directory, filename)
+            with open(full_path, 'r', encoding='utf-8') as dat:
+                vsebina = dat.read()
+                podatki.append(get_information(vsebina)) #napisi to fujo
+        else:
+            continue
+    return podatki
+
+def get_information(text):
+    kuzi = vzorec_profila.search(text).groupdict()
+    kuzi['adaptability'] = int(kuzi['adaptability'])
+    kuzi['friendliness'] = int(kuzi['friendliness'])
+    kuzi['health_and_needs'] = int(kuzi['health_and_needs'])
+    kuzi['trainability'] = int(kuzi['trainability'])
+    kuzi['physical_needs'] = int(kuzi['physical_needs'])
+
+    visina_sez = kuzi['height'].split()
+    if len(visina_sez) == 4:
+        visina_od_v_p = int(visina_sez[0])
+        visina_do_v_p = int(visina_sez[2])
+        kuzi['height_od'] = inches_to_cm(visina_od_v_p)
+        kuzi['height_do'] = inches_to_cm(visina_do_v_p)
+    elif len(visina_sez) == 2:
+        visina_v_p = int(visina_sez[0])
+        kuzi['height_od'] = inches_to_cm(visina_v_p)
+        kuzi['height_do'] = inches_to_cm(visina_v_p)
+    else:
+        continue
+    
+    teza_sez = kuzi['weight'].split()
+    if len(teza_sez) == 4:
+        teza_od_v_p = int(teza_sez[0])
+        teza_do_v_p = int(teza_sez[2])
+        kuzi['weight_od'] = pounds_to_kg(teza_od_v_p)
+        kuzi['weight_do'] = pounds_to_kg(teza_do_v_p)
+    elif len(teza_sez) == 2:
+        visina_v_p = int(teza_sez[0])
+        kuzi['weight_od'] = pounds_to_kg(teza_v_p)
+        kuzi['weight_do'] = pounds_to_kg(teza_v_p)
+    else:
+        continue
+
+    zivljenje = kuzi['life_span'].split()
+    if len(zivljenje) == 4:
+        ziv_od = int(zivljenje[0])
+        ziv_do = int(zivljenje[2])
+        kuzi['life_od'] = ziv_od 
+        kuzi['life_do'] = ziv_do
+    
+    elif len(zivljenje) == 2:
+        ziv = int(zivljenje[0])
+        kuzi['life_od'] = ziv
+        kuzi['life_do'] = ziv
+    
+    else:
+        continue
+    
+    return kuzi
+
+def inches_to_cm(visina):
+    v_cm = visina // 0.39370
+    return int(v_cm)
+    
+def pounds_to_kg(teza):
+    v_kg = teza // 2.2046
+    return int(v_kg)
+
+    
+################# od tuki naprej bo treba spremenit
+#ta funkcija bo mogla bit drugacna
 def read_file_to_string(directory, filename):
     """Funkcija vrne celotno vsebino datoteke "directory"/"filename" kot niz"""
     path = os.path.join(directory, filename)
@@ -171,7 +265,7 @@ def main(redownload=True, reparse=True):
     # v lokalno datoteko shranimo glavno stran
     save_frontpage(dog_directory, frontpage_filename)
 
-    save_pages_to_file(dog_directory,frontpage_filename)
+    save_pages_to_file(dog_directory, frontpage_filename)
     # iz lokalne html datoteke preberemo podatke
 #    ads = page_to_ads(read_file_to_string(dog_directory, frontpage_filename))
 
