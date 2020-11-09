@@ -99,6 +99,7 @@ def save_pages_to_file(directory, filename):
 ####################################################
 
 vzorec_profila = re.compile(
+    r'</title><script>PB = window.PB || {};PB.hashlessUrl = "//dogtime.com/dog-breeds/(?P<name>.*?)"'
     r'Adaptability</h3><div class="characteristic-star-block"><div class="star star-(?P<adaptability>\w)">'
     r'All Around Friendliness</h3><div class="characteristic-star-block"><div class="star star-(?P<friendliness>\w)">'
     r'Health And Grooming Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<health_and_needs>\w)">'
@@ -130,6 +131,7 @@ def get_information(text):
     #zakaj je matching tipa none
     print(matching)
     kuzi = matching.groupdict()
+    print(kuzi) #dobim slovar, kjer je vsaka vrednost none zato ne dela
     kuzi['adaptability'] = int(kuzi['adaptability'])
     kuzi['friendliness'] = int(kuzi['friendliness'])
     kuzi['health_and_needs'] = int(kuzi['health_and_needs'])
@@ -227,6 +229,16 @@ def ads_frontpage():
 # obdelane podatke želimo shraniti
 #############################################
 
+#poglej za ime
+imena_polj = [
+    'name', 'breed_group' 'adaptability', 'friendlines', 'health_and_needs',
+    'trainability', 'physical_needs', 'haight_od', 'height_do', 'weight_od',
+    'weight_do',
+    'life_span'
+]
+
+#fieldnames je najbrs sez vseh naslovov za podatke oz imena polj
+
 def write_csv(fieldnames, rows, directory, filename):
     """
     Funkcija v csv datoteko podano s parametroma "directory"/"filename" zapiše
@@ -252,6 +264,10 @@ def write_dog_ads_to_csv(ads, directory, filename):
     assert ads and (all(j.keys() == ads[0].keys() for j in ads))
     write_csv(ads[0].keys(), ads, directory, filename)
 
+# ce bo sploh delala
+#def zapisi_csv():
+#    with open('kuzki.csv', 'w') as csv_file:
+#        writer = csv.
 #######################################
 
 def main(redownload=True, reparse=True):
