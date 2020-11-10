@@ -106,9 +106,17 @@ vzorec_profila = re.compile(
     r'Trainability</h3><div class="characteristic-star-block"><div class="star star-(?P<trainability>\w)">.*?'
     r'Physical Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<physical_needs>\w)">.*?'
     r'<div class="vital-stat-title vital-stat-group">Dog Breed Group:</div>(?P<breed_group>.+?)</div>.*?'
-    r'<div class="vital-stat-title vital-stat-height">Height:</div>(?P<height>.*?)</div>.*?'
-    r'<div class="vital-stat-title vital-stat-weight">Weight:</div>(?P<weight>.*?)</div>.*?'
     r'<div class="vital-stat-title vital-stat-lifespan">Life Span:</div>(?P<life_span>.*?)</div>',
+    flags=re.DOTALL
+)
+
+vzorec_weight = re.compile(
+    r'<div class="vital-stat-title vital-stat-weight">Weight:</div>(?P<weight>.*?)</div>.*?',
+    flags=re.DOTALL
+)
+
+vzorec_height = re.compile(
+    r'<div class="vital-stat-title vital-stat-height">Height:</div>(?P<height>.*?)</div>.*?',
     flags=re.DOTALL
 )
 
@@ -122,7 +130,7 @@ def read_information(directory):
             with open(full_path, 'r', encoding='utf-8') as dat:
                 vsebina = dat.read()
                 podatki.append(get_information(vsebina))
-                print(podatki)
+                #print(podatki)
         else:
             continue
     return podatki
@@ -137,45 +145,56 @@ def get_information(text):
         kuzi['trainability'] = int(kuzi['trainability'])
         kuzi['physical_needs'] = int(kuzi['physical_needs'])
 
-        visina_sez = kuzi['height'].split()
-        visina = []
-        for znak in visina_sez:
-            if znak.isdigit():
-                visina.append(znak)
-        if len(visina) > 2 or len(visina) == 0:
+
+        height = vzorec_height.search(text)
+        if height:
+            kuzi['height'] = height['height']    
+            visina_sez = kuzi['height'].split()
+            visina = []
+            for znak in visina_sez:
+                if znak.isdigit():
+                    visina.append(znak)
+            if len(visina) > 2 or len(visina) == 0:
+                kuzi['height_od'] = None
+                kuzi['height_do'] = None
+            elif len(visina) == 2:
+                visina_od_v_inc = int(visina[0])
+                kuzi['height_od'] = inches_to_cm(visina_od_v_inc)
+                visina_do_v_inc = int(visina[1])
+                kuzi['height_do'] = inches_to_cm(visina_do_v_inc)
+            else:
+                visina_oboje = int(visina[0])
+                kuzi['height_od'] = inches_to_cm(visina_oboje)
+                kuzi['height_do'] = inches_to_cm(visina_oboje)
+            kuzi.pop('height')
+        else:
             kuzi['height_od'] = None
             kuzi['height_do'] = None
-        elif len(visina) == 2:
-            visina_od_v_inc = int(visina[0])
-            kuzi['height_od'] = inches_to_cm(visina_od_v_inc)
-            visina_do_v_inc = int(visina[1])
-            kuzi['height_do'] = inches_to_cm(visina_do_v_inc)
+
+        weight = vzorec_weight.search(text)
+        if weight:
+            kuzi['weight'] = weight['weight']
+            teza_sez = kuzi['weight'].split()
+            teza = []
+            for znak in teza_sez:
+                if znak.isdigit():
+                    teza.append(int(znak))
+            if len(teza) > 2 or len(teza) == 0:
+                kuzi['weight_od'] = None
+                kuzi['weight_do'] = None
+            elif len(teza) == 2:
+                teza_v_p = teza[0]
+                kuzi['weight_od'] = pounds_to_kg(teza_v_p)
+                teza_do_v_p = teza[1]
+                kuzi['weight_do'] = pounds_to_kg(teza_do_v_p)
+            else:
+                teza_oboje = teza[0]
+                kuzi['weight_od'] = pounds_to_kg(teza_oboje)
+                kuzi['weight_do'] = pounds_to_kg(teza_oboje)
+            kuzi.pop('weight')
         else:
-            visina_oboje = int(visina[0])
-            kuzi['height_od'] = inches_to_cm(visina_oboje)
-            kuzi['height_do'] = inches_to_cm(visina_oboje)
-        kuzi.pop(('height'))
-
-
-        teza_sez = kuzi['weight'].split()
-        teza = []
-        for znak in teza_sez:
-            if znak.isdigit():
-                teza.append(int(znak))
-        if len(teza) > 2 or len(teza) == 0:
             kuzi['weight_od'] = None
             kuzi['weight_do'] = None
-        elif len(teza) == 2:
-            teza_v_p = teza[0]
-            kuzi['weight_od'] = pounds_to_kg(teza_v_p)
-            teza_do_v_p = teza[1]
-            kuzi['weight_do'] = pounds_to_kg(teza_do_v_p)
-        else:
-            teza_oboje = teza[0]
-            kuzi['weight_od'] = pounds_to_kg(teza_oboje)
-            kuzi['weight_do'] = pounds_to_kg(teza_oboje)
-        kuzi.pop('weight')
-
 
         zivljenje = kuzi['life_span'].split()
         sez = []
@@ -259,10 +278,9 @@ def ads_frontpage():
 #############################################
 
 imena_polj = [
-    'name', 'breed_group' 'adaptability', 'friendlines', 'health_and_needs',
-    'trainability', 'physical_needs', 'haight_od', 'height_do', 'weight_od',
-    'weight_do',
-    'life_span'
+    'name', 'breed_group', 'adaptability', 'friendliness', 'health_and_needs',
+    'trainability', 'physical_needs', 'height_od', 'height_do', 'weight_od',
+    'weight_do', 'life_od', 'life_do'
 ]
 
 #fieldnames je najbrs sez vseh naslovov za podatke oz imena polj
@@ -318,11 +336,12 @@ def main(redownload=True, reparse=True):
     3. Podatke shrani v csv datoteko
     """
     # v lokalno datoteko shranimo glavno stran
-#    save_frontpage(dog_directory, frontpage_filename)
+    save_frontpage(dog_directory, frontpage_filename)
 
-#    save_pages_to_file(dog_directory, frontpage_filename)
+    save_pages_to_file(dog_directory, frontpage_filename)
 
     sez_slovarjev = read_information(dog_directory)
+    sez_slovarjev.sort(key=lambda kuzi: kuzi['name'])
     print(sez_slovarjev)
 
     zapisi_csv(sez_slovarjev, imena_polj, 'kuzki/tabela.csv')
