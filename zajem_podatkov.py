@@ -122,6 +122,7 @@ def read_information(directory):
             with open(full_path, 'r', encoding='utf-8') as dat:
                 vsebina = dat.read()
                 podatki.append(get_information(vsebina))
+                print(podatki)
         else:
             continue
     return podatki
@@ -153,6 +154,7 @@ def get_information(text):
             visina_oboje = int(visina[0])
             kuzi['height_od'] = inches_to_cm(visina_oboje)
             kuzi['height_do'] = inches_to_cm(visina_oboje)
+        kuzi.pop(('height'))
 
 
         teza_sez = kuzi['weight'].split()
@@ -165,13 +167,14 @@ def get_information(text):
             kuzi['weight_do'] = None
         elif len(teza) == 2:
             teza_v_p = teza[0]
-            kuzi['weight_od'] = inches_to_cm(teza_v_p)
+            kuzi['weight_od'] = pounds_to_kg(teza_v_p)
             teza_do_v_p = teza[1]
-            kuzi['weight_do'] = inches_to_cm(teza_do_v_p)
+            kuzi['weight_do'] = pounds_to_kg(teza_do_v_p)
         else:
             teza_oboje = teza[0]
-            kuzi['weight_od'] = inches_to_cm(teza_oboje)
-            kuzi['weight_do'] = inches_to_cm(teza_oboje)
+            kuzi['weight_od'] = pounds_to_kg(teza_oboje)
+            kuzi['weight_do'] = pounds_to_kg(teza_oboje)
+        kuzi.pop('weight')
 
 
         zivljenje = kuzi['life_span'].split()
@@ -191,6 +194,7 @@ def get_information(text):
             ziv = sez[0]
             kuzi['life_od'] = ziv
             kuzi['life_do'] = ziv
+        kuzi.pop('life_span')
 
         return kuzi #slovar
     
