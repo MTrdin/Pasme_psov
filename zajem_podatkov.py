@@ -99,15 +99,15 @@ def save_pages_to_file(directory, filename):
 ####################################################
 
 vzorec_profila = re.compile(
-    r'</title><script>PB = window.PB || {};PB.hashlessUrl = "//dogtime.com/dog-breeds/(?P<name>.*?)"'
-    r'Adaptability</h3><div class="characteristic-star-block"><div class="star star-(?P<adaptability>\w)">'
-    r'All Around Friendliness</h3><div class="characteristic-star-block"><div class="star star-(?P<friendliness>\w)">'
-    r'Health And Grooming Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<health_and_needs>\w)">'
-    r'Trainability</h3><div class="characteristic-star-block"><div class="star star-(?P<trainability>\w)">'
-    r'Physical Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<physical_needs>\w)">'
-    r'<div class="vital-stat-title vital-stat-group">Dog Breed Group:</div>(?P<breed_group>.+?)</div>'
-    r'<div class="vital-stat-title vital-stat-height">Height:</div>(?P<height>.*?)</div>'
-    r'<div class="vital-stat-title vital-stat-weight">Weight:</div>(?P<weight>.*?)</div>'
+    r'PB.hashlessUrl = "//dogtime.com/dog-breeds/(?P<name>.*?)".*?'
+    r'Adaptability</h3><div class="characteristic-star-block"><div class="star star-(?P<adaptability>\w)">.*?'
+    r'All Around Friendliness</h3><div class="characteristic-star-block"><div class="star star-(?P<friendliness>\w)">.*?'
+    r'Health And Grooming Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<health_and_needs>\w)">.*?'
+    r'Trainability</h3><div class="characteristic-star-block"><div class="star star-(?P<trainability>\w)">.*?'
+    r'Physical Needs</h3><div class="characteristic-star-block"><div class="star star-(?P<physical_needs>\w)">.*?'
+    r'<div class="vital-stat-title vital-stat-group">Dog Breed Group:</div>(?P<breed_group>.+?)</div>.*?'
+    r'<div class="vital-stat-title vital-stat-height">Height:</div>(?P<height>.*?)</div>.*?'
+    r'<div class="vital-stat-title vital-stat-weight">Weight:</div>(?P<weight>.*?)</div>.*?'
     r'<div class="vital-stat-title vital-stat-lifespan">Life Span:</div>(?P<life_span>.*?)</div>',
     flags=re.DOTALL
 )
@@ -128,51 +128,76 @@ def read_information(directory):
 
 def get_information(text):
     matching = re.search(vzorec_profila, text)
-    #zakaj je matching tipa none
-    print(matching)
-    kuzi = matching.groupdict()
-    print(kuzi) #dobim slovar, kjer je vsaka vrednost none zato ne dela
-    kuzi['adaptability'] = int(kuzi['adaptability'])
-    kuzi['friendliness'] = int(kuzi['friendliness'])
-    kuzi['health_and_needs'] = int(kuzi['health_and_needs'])
-    kuzi['trainability'] = int(kuzi['trainability'])
-    kuzi['physical_needs'] = int(kuzi['physical_needs'])
+    if matching:
+        kuzi = matching.groupdict()
+        kuzi['adaptability'] = int(kuzi['adaptability'])
+        kuzi['friendliness'] = int(kuzi['friendliness'])
+        kuzi['health_and_needs'] = int(kuzi['health_and_needs'])
+        kuzi['trainability'] = int(kuzi['trainability'])
+        kuzi['physical_needs'] = int(kuzi['physical_needs'])
 
-    visina_sez = kuzi['height'].split()
-    if len(visina_sez) == 4:
-        visina_od_v_p = int(visina_sez[0])
-        visina_do_v_p = int(visina_sez[2])
-        kuzi['height_od'] = inches_to_cm(visina_od_v_p)
-        kuzi['height_do'] = inches_to_cm(visina_do_v_p)
-    elif len(visina_sez) == 2:
-        visina_v_p = int(visina_sez[0])
-        kuzi['height_od'] = inches_to_cm(visina_v_p)
-        kuzi['height_do'] = inches_to_cm(visina_v_p)
+        visina_sez = kuzi['height'].split()
+        visina = []
+        for znak in visina_sez:
+            if znak.isdigit():
+                visina.append(znak)
+        if len(visina) > 2 or len(visina) == 0:
+            kuzi['height_od'] = None
+            kuzi['height_do'] = None
+        elif len(visina) == 2:
+            visina_od_v_inc = int(visina[0])
+            kuzi['height_od'] = inches_to_cm(visina_od_v_inc)
+            visina_do_v_inc = int(visina[1])
+            kuzi['height_do'] = inches_to_cm(visina_do_v_inc)
+        else:
+            visina_oboje = int(visina[0])
+            kuzi['height_od'] = inches_to_cm(visina_oboje)
+            kuzi['height_do'] = inches_to_cm(visina_oboje)
+
+
+        teza_sez = kuzi['weight'].split()
+        teza = []
+        for znak in teza_sez:
+            if znak.isdigit():
+                teza.append(int(znak))
+        if len(teza) > 2 or len(teza) == 0:
+            kuzi['weight_od'] = None
+            kuzi['weight_do'] = None
+        elif len(teza) == 2:
+            teza_v_p = teza[0]
+            kuzi['weight_od'] = inches_to_cm(teza_v_p)
+            teza_do_v_p = teza[1]
+            kuzi['weight_do'] = inches_to_cm(teza_do_v_p)
+        else:
+            teza_oboje = teza[0]
+            kuzi['weight_od'] = inches_to_cm(teza_oboje)
+            kuzi['weight_do'] = inches_to_cm(teza_oboje)
+
+
+        zivljenje = kuzi['life_span'].split()
+        sez = []
+        for znak in zivljenje:
+            if znak.isdigit():
+                sez.append(int(znak))
+        if len(sez) > 2 or len(sez) == 0:
+            kuzi['life_od'] = None
+            kuzi['life_do'] = None
+        elif len(sez) == 2:
+            ziv_od = sez[0]
+            kuzi['life_od'] = ziv_od
+            ziv_do = sez[1]
+            kuzi['life_do'] = ziv_do
+        else:
+            ziv = sez[0]
+            kuzi['life_od'] = ziv
+            kuzi['life_do'] = ziv
+
+        return kuzi #slovar
     
-    teza_sez = kuzi['weight'].split()
-    if len(teza_sez) == 4:
-        teza_od_v_p = int(teza_sez[0])
-        teza_do_v_p = int(teza_sez[2])
-        kuzi['weight_od'] = pounds_to_kg(teza_od_v_p)
-        kuzi['weight_do'] = pounds_to_kg(teza_do_v_p)
-    elif len(teza_sez) == 2:
-        visina_v_p = int(teza_sez[0])
-        kuzi['weight_od'] = pounds_to_kg(teza_v_p)
-        kuzi['weight_do'] = pounds_to_kg(teza_v_p)
-    
-    zivljenje = kuzi['life_span'].split()
-    if len(zivljenje) == 4:
-        ziv_od = int(zivljenje[0])
-        ziv_do = int(zivljenje[2])
-        kuzi['life_od'] = ziv_od 
-        kuzi['life_do'] = ziv_do
-    
-    elif len(zivljenje) == 2:
-        ziv = int(zivljenje[0])
-        kuzi['life_od'] = ziv
-        kuzi['life_do'] = ziv
-    
-    return kuzi
+    else:
+        print("CAN'T READ")
+        print(text)
+        exit()
 
 def inches_to_cm(visina):
     v_cm = visina // 0.39370
@@ -229,7 +254,6 @@ def ads_frontpage():
 # obdelane podatke želimo shraniti
 #############################################
 
-#poglej za ime
 imena_polj = [
     'name', 'breed_group' 'adaptability', 'friendlines', 'health_and_needs',
     'trainability', 'physical_needs', 'haight_od', 'height_do', 'weight_od',
@@ -238,6 +262,7 @@ imena_polj = [
 ]
 
 #fieldnames je najbrs sez vseh naslovov za podatke oz imena polj
+
 
 def write_csv(fieldnames, rows, directory, filename):
     """
@@ -265,9 +290,21 @@ def write_dog_ads_to_csv(ads, directory, filename):
     write_csv(ads[0].keys(), ads, directory, filename)
 
 # ce bo sploh delala
-#def zapisi_csv():
-#    with open('kuzki.csv', 'w') as csv_file:
-#        writer = csv.
+def zapisi_csv(slovarji, im_polj, ime_datoteke):
+    '''Iz seznama slovarjev ustvari CSV datoteko z glavo.'''
+    pripravi_imenik(ime_datoteke)
+    with open(ime_datoteke, 'w', encoding='utf-8') as csv_datoteka:
+        writer = csv.DictWriter(csv_datoteka, fieldnames=im_polj)
+        writer.writeheader()
+        for slovar in slovarji:
+            writer.writerow(slovar)
+
+def pripravi_imenik(ime_datoteke):
+    '''Če še ne obstaja, pripravi prazen imenik za dano datoteko.'''
+    imenik = os.path.dirname(ime_datoteke)
+    if imenik:
+        os.makedirs(imenik, exist_ok=True)
+
 #######################################
 
 def main(redownload=True, reparse=True):
@@ -283,6 +320,10 @@ def main(redownload=True, reparse=True):
 
     sez_slovarjev = read_information(dog_directory)
     print(sez_slovarjev)
+
+    zapisi_csv(sez_slovarjev, imena_polj, 'kuzki/tabela.csv')
+
+##############################
 
     # iz lokalne html datoteke preberemo podatke
 #    ads = page_to_ads(read_file_to_string(dog_directory, frontpage_filename))
