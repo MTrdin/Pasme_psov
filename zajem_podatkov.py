@@ -12,17 +12,10 @@ frontpage_url = "https://dogtime.com/dog-breeds/profiles"
 # mapa, v katero bom shranila podatke
 dog_directory = os.path.join(sys.path[0], 'dog_save')
 # ime datoteke v katero bom shranila glavno stran
-frontpage_filename = "index_kuzki.html" #spremenit
+frontpage_filename = "index_kuzki.html"
 # ime csv datoteke, v katero bomo shranili podatke
-csv_filename = "kuzki.csv"
+csv_filename = "tabela.csv"
 
-#ce bo csv datotek prevec pol jih ne vkljucis
-
-#tega zdej ne rabm
-re_pick_links_block = re.compile(
-    r'<a class="list-item-title" href=(.*?)>',
-    flags=re.DOTALL
-)
 
 re_pick_link = re.compile(
     r'<a class="list-item-title" href="https://dogtime.com/dog-breeds/(.*?)"',
@@ -80,13 +73,11 @@ def save_frontpage(directory, filename):
 def save_pages_to_file(directory, filename):
     with open(os.path.join(directory, filename), "r", encoding='utf-8') as dat:
         vsebina = dat.read()
-    #cel_block = re_pick_links_block.findall(vsebina)[0]
     sez_linkov = re_pick_link.findall(vsebina)
     print(sez_linkov)
     #'afador' je link
     for link in sez_linkov:
         stran = requests.get('https://dogtime.com/dog-breeds/' + link)
-        #names_dict = re_name_from_link.search(link)
         #print(names_dict)
         ime_mape_posamezno = '{}.html'.format(link)
         full_filepath = os.path.join(directory, ime_mape_posamezno)
@@ -125,7 +116,7 @@ def read_information(directory):
     """Vrne sez vseh slovarjev za posameznega kuzka"""
     podatki = []
     for filename in os.listdir(directory):
-        if filename != 'index_kuzki.html' and filename != '.html':#.html bi najbrs mogla zbrisat
+        if filename != 'index_kuzki.html':
             full_path = os.path.join(directory, filename)
             with open(full_path, 'r', encoding='utf-8') as dat:
                 vsebina = dat.read()
@@ -231,48 +222,6 @@ def pounds_to_kg(teza):
     return int(v_kg)
 
     
-################# od tuki naprej bo treba spremenit
-#ta funkcija bo mogla bit drugacna
-#verjetno sploh ne bo potrebna
-def read_file_to_string(directory, filename):
-    """Funkcija vrne celotno vsebino datoteke "directory"/"filename" kot niz"""
-    path = os.path.join(directory, filename)
-    with open(path, 'r', encoding='utf-8') as file_in:
-        return file_in.read()
-
-def page_to_ads(page_content):
-    """Funkcija poišče posamezne oglase, ki se nahajajo v spletni strani in
-    vrne njih seznam"""
-    rx = re.compile(r'<div class="list-item"><a class="list-item-img"'
-                    r'(.*?)</a></div>',
-                    re.DOTALL)
-    ads = re.findall(rx, page_content)
-    return ads
-
-def get_dict_from_ad_block(block):
-    """Funkcija iz niza za posamezen oglasni blok izlušči podatke o imenu,
-    lokaciji, datumu objave in ceni ter vrne slovar, ki vsebuje ustrezne
-    podatke"""
-    rx = re.compile(r'alt=(?P<name>.*?) >',
-                    re.DOTALL)
-    data = re.search(rx, block)
-    ad_dict = data.groupdict()
-    return ad_dict
-
-
-
-def ads_from_file(filename, directory):
-    """Funkcija prebere podatke v datoteki "directory"/"filename" in jih
-   pretvori (razčleni) v pripadajoč seznam slovarjev za vsak oglas posebej."""
-    page = read_file_to_string(directory, filename)
-    blocks = page_to_ads(page)
-    ads = [get_dict_from_ad_block(block) for block in blocks]
-    return ads
-
-
-def ads_frontpage():
-    return ads_from_file(cat_directory, frontpage_filename)
-
 ##############################################
 # obdelane podatke želimo shraniti
 #############################################
@@ -283,35 +232,8 @@ imena_polj = [
     'weight_do', 'life_od', 'life_do'
 ]
 
-#fieldnames je najbrs sez vseh naslovov za podatke oz imena polj
+# fieldnames je najbrs sez vseh naslovov za podatke oz imena polj
 
-
-def write_csv(fieldnames, rows, directory, filename):
-    """
-    Funkcija v csv datoteko podano s parametroma "directory"/"filename" zapiše
-    vrednosti v parametru "rows" pripadajoče ključem podanim v "fieldnames"
-    """
-    os.makedirs(directory, exist_ok=True)
-    path = os.path.join(directory, filename)
-    with open(path, 'w', encoding='utf-8') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
-    return None
-
-def write_dog_ads_to_csv(ads, directory, filename):
-    """Funkcija vse podatke iz parametra "ads" zapiše v csv datoteko podano s
-    parametroma "directory"/"filename". Funkcija predpostavi, da so ključi vseh
-    slovarjev parametra ads enaki in je seznam ads neprazen."""
-    # Stavek assert preveri da zahteva velja
-    # Če drži se program normalno izvaja, drugače pa sproži napako
-    # Prednost je v tem, da ga lahko pod določenimi pogoji izklopimo v
-    # produkcijskem okolju
-    assert ads and (all(j.keys() == ads[0].keys() for j in ads))
-    write_csv(ads[0].keys(), ads, directory, filename)
-
-# ce bo sploh delala
 def zapisi_csv(slovarji, im_polj, ime_datoteke):
     '''Iz seznama slovarjev ustvari CSV datoteko z glavo.'''
     pripravi_imenik(ime_datoteke)
@@ -336,7 +258,7 @@ def main(redownload=True, reparse=True):
     3. Podatke shrani v csv datoteko
     """
     # v lokalno datoteko shranimo glavno stran
-    save_frontpage(dog_directory, frontpage_filename)
+    save_frontpage('kuzki', frontpage_filename) #tuki je biu se dog_directory = kuzki
 
     save_pages_to_file(dog_directory, frontpage_filename)
 
@@ -346,17 +268,7 @@ def main(redownload=True, reparse=True):
 
     zapisi_csv(sez_slovarjev, imena_polj, 'kuzki/tabela.csv')
 
-##############################
 
-    # iz lokalne html datoteke preberemo podatke
-#    ads = page_to_ads(read_file_to_string(dog_directory, frontpage_filename))
-
-    # Podatke preberemo v lepšo obliko (seznam slovarjev)
-#   ads_nice = [get_dict_from_ad_block(ad) for ad in ads]
-#    print(ads_from_file(frontpage_filename, dog_directory))
-
-    # podatke shranimo v csv datoteko
-#   write_dog_ads_to_csv(ads_nice, dog_directory, csv_filename)
 
 if __name__ == "__main__":
     main()
