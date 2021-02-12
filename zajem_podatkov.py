@@ -111,7 +111,6 @@ vzorec_height = re.compile(
     flags=re.DOTALL
 )
 
-# dodana
 def read_information(directory):
     """Vrne sez vseh slovarjev za posameznega kuzka"""
     podatki = []
@@ -232,7 +231,6 @@ imena_polj = [
     'weight_do', 'life_od', 'life_do'
 ]
 
-# fieldnames je najbrs sez vseh naslovov za podatke oz imena polj
 
 def zapisi_csv(slovarji, im_polj, ime_datoteke):
     '''Iz seznama slovarjev ustvari CSV datoteko z glavo.'''
